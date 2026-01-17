@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from pydantic_core import core_schema
 from typing import Optional, List, Any
 from datetime import datetime
@@ -45,7 +45,7 @@ class PyObjectId(str):
 class UserBase(BaseModel):
     """Base user model with common fields"""
     businessName: Optional[str] = None
-    businessEmail: Optional[EmailStr] = None
+    businessEmail: Optional[str] = None
     businessPhone: Optional[str] = None
     businessAddress: Optional[str] = None
     businessCategory: Optional[str] = None
@@ -55,7 +55,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """Model for creating a new user"""
-    businessEmail: EmailStr  # Required for creation
+    businessEmail: str  # Required for creation
 
 class UserUpdate(UserBase):
     """Model for updating a user (all fields optional)"""
@@ -88,7 +88,7 @@ class User(UserBase):
 class ClientBase(BaseModel):
     """Base client model"""
     name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     userId: Optional[str] = None  # Reference to user
     address: Optional[str] = None
 
