@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useNavigate } from 'react-router-dom';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './Sidebar.css';
 
@@ -124,6 +123,19 @@ function Sidebar({ user }) {
             <div className="section-title">
               <span className="section-icon">🔧</span>
               <span>Jobs</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Expenses Section */}
+        <div className="sidebar-section">
+          <button 
+            className={`section-header ${location.pathname === '/expenses' ? 'active' : ''}`}
+            onClick={() => navigate('/expenses')}
+          >
+            <div className="section-title">
+              <span className="section-icon">🧾</span>
+              <span>Expenses</span>
             </div>
           </button>
         </div>
