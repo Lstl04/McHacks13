@@ -18,12 +18,20 @@ app = FastAPI(
 )
 
 # CORS middleware - allows frontend to connect
+# Get allowed origins from environment variable or use defaults
+allowed_origins = settings.ALLOWED_ORIGINS
+# Clean up origins (remove trailing slashes and whitespace)
+allowed_origins = [origin.strip().rstrip('/') for origin in allowed_origins if origin.strip()]
+
+logger.info(f"CORS allowed origins: {allowed_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],  # React dev servers
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Startup event - connect to database
