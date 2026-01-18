@@ -97,13 +97,21 @@ function Expenses() {
         const data = outputs?.expense_data || Object.values(outputs)[0];
         const parsed = typeof data === 'string' ? JSON.parse(data) : data;
 
+        // Ensure line items have all required fields
+        const lineItems = (parsed.line_items || []).map(item => ({
+          description: item.description || '',
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || (item.total || 0) / (item.quantity || 1),
+          total: item.total || 0
+        }));
+
         setExpenseData({
           vendor_name: parsed.vendor_name || '',
           date: parsed.date ? parsed.date.split('T')[0] : '',
           total_amount: parsed.total_amount || 0,
           tax_amount: parsed.tax_amount || 0,
           currency: parsed.currency || 'USD',
-          line_items: parsed.line_items || []
+          line_items: lineItems || []
         });
       } catch (err) { 
         setError('DATA_EXTRACTION_FAILED'); 
@@ -115,7 +123,18 @@ function Expenses() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
+    setError(null);
+    setSaveSuccess(false);
     try {
+      const token = await getAccessTokenSilently();
+      // Transform line items to match backend structure
+      const lineItems = (expenseData.line_items || []).map(item => ({
+        description: item.description || '',
+        quantity: parseFloat(item.quantity) || 1,
+        unitPrice: parseFloat(item.unitPrice) || 0,
+        total: parseFloat(item.total) || 0
+      }));
+
       const payload = {
         userId: mongoUserId,
         vendorName: expenseData.vendor_name,
@@ -123,20 +142,31 @@ function Expenses() {
         totalAmount: parseFloat(expenseData.total_amount),
         taxAmount: parseFloat(expenseData.tax_amount),
         currency: expenseData.currency,
-        lineItems: expenseData.line_items,
+        lineItems: lineItems,
         receiptImageUrl: previewUrl
       };
       const response = await fetch(`${API_URL}/expenses/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       });
+      
       if (response.ok) {
+        const result = await response.json();
         setSaveSuccess(true);
         fetchExpenses();
-        setTimeout(() => { setActiveView('list'); setExpenseData(null); setPreviewUrl(null); }, 1500);
+        setTimeout(() => { setActiveView('list'); setExpenseData(null); setPreviewUrl(null); setSaveSuccess(false); }, 1500);
+      } else {
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to create expense' }));
+        setError(`SAVE_ERROR: ${errorData.detail || response.statusText}`);
       }
-    } catch (err) { setError('SAVE_SYNC_ERROR'); }
+    } catch (err) { 
+      console.error('Expense creation error:', err);
+      setError('SAVE_SYNC_ERROR'); 
+    }
     finally { setIsSaving(false); }
   }
 
@@ -208,27 +238,39 @@ function Expenses() {
               <div className="line-items-section">
                 <div className="line-items-header">
                   <h3>MANIFEST_ITEMS</h3>
-                  <button type="button" className="add-item-btn" onClick={() => setExpenseData({...expenseData, line_items: [...expenseData.line_items, { description: '', total: 0 }]})}>+ ADD_ROW</button>
+                  <button type="button" className="add-item-btn" onClick={() => setExpenseData({...expenseData, line_items: [...expenseData.line_items, { description: '', quantity: 1, unitPrice: 0, total: 0 }]})}>+ ADD_ROW</button>
                 </div>
                 {expenseData.line_items.map((item, idx) => (
                   <div key={idx} className="line-item">
-                    <input type="text" placeholder="DESC" value={item.description} onChange={(e) => {
+                    <input type="text" placeholder="DESC" value={item.description || ''} onChange={(e) => {
                       const items = [...expenseData.line_items];
                       items[idx].description = e.target.value;
                       setExpenseData({...expenseData, line_items: items});
                     }} />
-                    <input type="number" placeholder="VAL" value={item.total} onChange={(e) => {
+                    <input type="number" placeholder="QTY" value={item.quantity || 1} onChange={(e) => {
                       const items = [...expenseData.line_items];
-                      items[idx].total = e.target.value;
+                      items[idx].quantity = parseFloat(e.target.value) || 1;
+                      items[idx].total = (items[idx].quantity || 1) * (items[idx].unitPrice || 0);
                       setExpenseData({...expenseData, line_items: items});
-                    }} />
+                    }} step="0.01" />
+                    <input type="number" placeholder="UNIT PRICE" value={item.unitPrice || 0} onChange={(e) => {
+                      const items = [...expenseData.line_items];
+                      items[idx].unitPrice = parseFloat(e.target.value) || 0;
+                      items[idx].total = (items[idx].quantity || 1) * (items[idx].unitPrice || 0);
+                      setExpenseData({...expenseData, line_items: items});
+                    }} step="0.01" />
+                    <input type="number" placeholder="TOTAL" value={item.total || 0} onChange={(e) => {
+                      const items = [...expenseData.line_items];
+                      items[idx].total = parseFloat(e.target.value) || 0;
+                      setExpenseData({...expenseData, line_items: items});
+                    }} step="0.01" />
                     <button type="button" className="remove-item-btn" onClick={() => setExpenseData({...expenseData, line_items: expenseData.line_items.filter((_, i) => i !== idx)})}>×</button>
                   </div>
                 ))}
               </div>
 
               <button type="submit" className="submit-btn" disabled={isSaving}>
-                {isSaving ? 'SYNCING...' : saveSuccess ? 'SYNC_COMPLETE' : 'COMMIT_EXPENSE'}
+                {isSaving ? 'SYNCING...' : saveSuccess ? 'SYNC COMPLETE' : 'COMMIT EXPENSE'}
               </button>
             </form>
           )}

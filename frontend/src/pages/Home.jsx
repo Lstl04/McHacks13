@@ -17,7 +17,8 @@ function Home() {
     completedJobs: 0,
     pendingJobs: 0,
     expensesTotal: 0,
-    expensesCount: 0
+    expensesCount: 0,
+    revenueTotal: 0
   });
   const [recentJobs, setRecentJobs] = useState([]);
   const [recentExpenses, setRecentExpenses] = useState([]);
@@ -128,6 +129,18 @@ function Home() {
           // Get 3 most recent expenses
           setRecentExpenses(expenses.slice(0, 3));
         }
+
+        // Fetch invoices
+        const invoicesResponse = await fetch(`${API_URL}/invoices/?user_id=${mongoUserId}`);
+        if (invoicesResponse.ok) {
+          const invoices = await invoicesResponse.json();
+          const total = invoices.reduce((sum, inv) => sum + (inv.total || 0), 0);
+          
+          setStats(prev => ({
+            ...prev,
+            revenueTotal: total
+          }));
+        }
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
       }
@@ -198,7 +211,7 @@ function Home() {
           <div className="stat-card revenue">
             <div className="stat-icon">REVENUE</div>
             <div className="stat-info">
-              <span className="stat-value">Coming Soon</span>
+              <span className="stat-value">{formatCurrency(stats.revenueTotal)}</span>
               <span className="stat-label">Revenue</span>
             </div>
           </div>
@@ -206,7 +219,7 @@ function Home() {
           <div className="stat-card profit">
             <div className="stat-icon">PROFIT</div>
             <div className="stat-info">
-              <span className="stat-value">Coming Soon</span>
+              <span className="stat-value">{formatCurrency(stats.revenueTotal - stats.expensesTotal)}</span>
               <span className="stat-label">Net Profit</span>
             </div>
           </div>
