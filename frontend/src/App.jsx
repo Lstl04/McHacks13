@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import Onboarding from './pages/Onboarding';
 import './App.css';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="/onboarding" element={<Onboarding />} />
             </Routes>
           </main>
         </div>
