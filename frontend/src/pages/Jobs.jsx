@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import './Jobs.css';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
 function Jobs() {
-  const { user } = useAuth0();
+  const { user, isAuthenticated } = useAuth0();
   const [plannedJobs, setPlannedJobs] = useState([]);
   const [pastJobs, setPastJobs] = useState([]);
   const [activeTab, setActiveTab] = useState('planned'); // 'planned' or 'past'
@@ -19,6 +21,54 @@ function Jobs() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [mongoUserId, setMongoUserId] = useState(null);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true);
+
+  // Fetch MongoDB user ID from Auth0 sub
+  useEffect(() => {
+    const fetchUserId = async () => {
+      if (isAuthenticated && user?.sub) {
+        try {
+          const response = await fetch(`${API_URL}/users/by-auth0/${encodeURIComponent(user.sub)}`);
+          if (response.ok) {
+            const userData = await response.json();
+            setMongoUserId(userData._id);
+          }
+        } catch (err) {
+          console.error('Error fetching user:', err);
+        }
+      }
+    };
+    fetchUserId();
+  }, [isAuthenticated, user]);
+
+  // Fetch jobs when mongoUserId is available
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!mongoUserId) return;
+      
+      setIsLoadingJobs(true);
+      try {
+        const response = await fetch(`${API_URL}/jobs/?user_id=${mongoUserId}`);
+        if (response.ok) {
+          const jobs = await response.json();
+          const now = new Date();
+          
+          // Split into planned (pending/in_progress) and past (completed) jobs
+          const planned = jobs.filter(job => job.status !== 'completed');
+          const past = jobs.filter(job => job.status === 'completed');
+          
+          setPlannedJobs(planned);
+          setPastJobs(past);
+        }
+      } catch (err) {
+        console.error('Error fetching jobs:', err);
+      } finally {
+        setIsLoadingJobs(false);
+      }
+    };
+    fetchJobs();
+  }, [mongoUserId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -30,13 +80,19 @@ function Jobs() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!mongoUserId) {
+      setError('User not authenticated. Please try again.');
+      return;
+    }
+    
     setIsSubmitting(true);
     setError(null);
 
     try {
       // Prepare job data for backend
       const jobData = {
-        userId: user?.sub,
+        userId: mongoUserId,
         title: formData.title,
         status: 'pending',
         startTime: new Date(formData.startTime).toISOString(),
@@ -47,7 +103,7 @@ function Jobs() {
         // Update existing job
         console.log('Updating job:', editingJobId, jobData);
 
-        const response = await fetch(`http://localhost:8000/api/jobs/${editingJobId}`, {
+        const response = await fetch(`${API_URL}/jobs/${editingJobId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -73,7 +129,7 @@ function Jobs() {
         // Create new job
         console.log('Creating job:', jobData);
 
-        const response = await fetch('http://localhost:8000/api/jobs/', {
+        const response = await fetch(`${API_URL}/jobs/`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -152,7 +208,7 @@ function Jobs() {
         endTime: job.endTime,
       };
 
-      const response = await fetch(`http://localhost:8000/api/jobs/${jobId}`, {
+      const response = await fetch(`${API_URL}/jobs/${jobId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -183,7 +239,7 @@ function Jobs() {
     }
 
     try {
-      const response = await fetch(`http://localhost:8000/api/jobs/${jobId}`, {
+      const response = await fetch(`${API_URL}/jobs/${jobId}`, {
         method: 'DELETE',
       });
 
@@ -267,7 +323,12 @@ function Jobs() {
 
       {/* Jobs Content */}
       <div className="jobs-content">
-        {activeTab === 'planned' ? (
+        {isLoadingJobs ? (
+          <div className="empty-state">
+            <h3>Loading jobs...</h3>
+            <p>Please wait while we fetch your jobs</p>
+          </div>
+        ) : activeTab === 'planned' ? (
           plannedJobs.length === 0 ? (
             <div className="empty-state">
               <h3>No incoming jobs</h3>

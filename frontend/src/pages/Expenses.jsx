@@ -20,6 +20,9 @@ function Expenses() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [mongoUserId, setMongoUserId] = useState(null);
+  const [existingExpenses, setExistingExpenses] = useState([]);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(true);
+  const [activeView, setActiveView] = useState('scan'); // 'scan' or 'list'
 
   // Fetch MongoDB user ID from Auth0 sub
   useEffect(() => {
@@ -38,6 +41,28 @@ function Expenses() {
     };
     fetchUserId();
   }, [isAuthenticated, user]);
+
+  // Fetch existing expenses when mongoUserId is available
+  const fetchExpenses = async () => {
+    if (!mongoUserId) return;
+    
+    setIsLoadingExpenses(true);
+    try {
+      const response = await fetch(`${API_URL}/expenses/?user_id=${mongoUserId}`);
+      if (response.ok) {
+        const expenses = await response.json();
+        setExistingExpenses(expenses);
+      }
+    } catch (err) {
+      console.error('Error fetching expenses:', err);
+    } finally {
+      setIsLoadingExpenses(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [mongoUserId]);
 
   // Poll for pipeline completion
   const pollForResult = async (runId) => {
@@ -266,12 +291,16 @@ function Expenses() {
       
       setSaveSuccess(true);
       
+      // Refresh expenses list
+      await fetchExpenses();
+      
       // Reset form after successful save
       setTimeout(() => {
         setExpenseData(null);
         setPreviewUrl(null);
         setSaveSuccess(false);
-      }, 2000);
+        setActiveView('list'); // Switch to list view to see the new expense
+      }, 1500);
 
     } catch (err) {
       console.error('Error saving expense:', err);
@@ -281,11 +310,63 @@ function Expenses() {
     }
   };
 
+  const handleDeleteExpense = async (expenseId) => {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/expenses/${expenseId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setExistingExpenses(prev => prev.filter(exp => exp._id !== expenseId));
+      }
+    } catch (err) {
+      console.error('Error deleting expense:', err);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const formatCurrency = (amount, currency = 'USD') => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency
+    }).format(amount || 0);
+  };
+
   return (
     <div className="expenses-container">
-      <h1>📸 Scan Expense</h1>
-      <p className="expenses-subtitle">Upload a receipt or expense image to automatically extract the data</p>
+      <h1>🧾 Expenses</h1>
+      <p className="expenses-subtitle">Track and manage your business expenses</p>
 
+      {/* Tab Navigation */}
+      <div className="expenses-tabs">
+        <button
+          className={`tab-btn ${activeView === 'scan' ? 'active' : ''}`}
+          onClick={() => setActiveView('scan')}
+        >
+          <span className="tab-icon">📸</span>
+          Scan Receipt
+        </button>
+        <button
+          className={`tab-btn ${activeView === 'list' ? 'active' : ''}`}
+          onClick={() => setActiveView('list')}
+        >
+          <span className="tab-icon">📋</span>
+          My Expenses
+          <span className="tab-count">{existingExpenses.length}</span>
+        </button>
+      </div>
+
+      {activeView === 'scan' ? (
       <div className="expenses-content">
         {/* Upload Section */}
         <div className="upload-section">
@@ -444,6 +525,100 @@ function Expenses() {
           </form>
         )}
       </div>
+      ) : (
+        /* Expenses List View */
+        <div className="expenses-list-container">
+          {isLoadingExpenses ? (
+            <div className="empty-state">
+              <h3>Loading expenses...</h3>
+              <p>Please wait while we fetch your expenses</p>
+            </div>
+          ) : existingExpenses.length === 0 ? (
+            <div className="empty-state">
+              <h3>No expenses yet</h3>
+              <p>Scan a receipt to add your first expense</p>
+              <button className="scan-first-btn" onClick={() => setActiveView('scan')}>
+                📸 Scan Receipt
+              </button>
+            </div>
+          ) : (
+            <div className="expenses-grid">
+              {existingExpenses.map((expense) => (
+                <div key={expense._id} className="expense-card">
+                  <div className="expense-card-header">
+                    <div className="expense-vendor">
+                      <span className="vendor-icon">🏪</span>
+                      <h3>{expense.vendorName || 'Unknown Vendor'}</h3>
+                    </div>
+                    <div className="expense-amount">
+                      {formatCurrency(expense.totalAmount, expense.currency)}
+                    </div>
+                  </div>
+
+                  <div className="expense-card-body">
+                    <div className="expense-date">
+                      <span className="date-icon">📅</span>
+                      <span>{formatDate(expense.date)}</span>
+                    </div>
+                    
+                    {expense.taxAmount > 0 && (
+                      <div className="expense-tax">
+                        <span className="tax-label">Tax:</span>
+                        <span>{formatCurrency(expense.taxAmount, expense.currency)}</span>
+                      </div>
+                    )}
+
+                    {expense.lineItems && expense.lineItems.length > 0 && (
+                      <div className="expense-items-count">
+                        <span>{expense.lineItems.length} item(s)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="expense-card-footer">
+                    <button 
+                      className="expense-action-btn delete"
+                      title="Delete"
+                      onClick={() => handleDeleteExpense(expense._id)}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Summary Section */}
+          {existingExpenses.length > 0 && (
+            <div className="expenses-summary">
+              <h3>Summary</h3>
+              <div className="summary-stats">
+                <div className="summary-stat">
+                  <span className="stat-label">Total Expenses</span>
+                  <span className="stat-value">
+                    {formatCurrency(
+                      existingExpenses.reduce((sum, exp) => sum + (exp.totalAmount || 0), 0)
+                    )}
+                  </span>
+                </div>
+                <div className="summary-stat">
+                  <span className="stat-label">Total Tax</span>
+                  <span className="stat-value">
+                    {formatCurrency(
+                      existingExpenses.reduce((sum, exp) => sum + (exp.taxAmount || 0), 0)
+                    )}
+                  </span>
+                </div>
+                <div className="summary-stat">
+                  <span className="stat-label">Count</span>
+                  <span className="stat-value">{existingExpenses.length}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
