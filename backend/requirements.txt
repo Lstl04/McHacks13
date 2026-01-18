@@ -2,9 +2,11 @@ fastapi
 uvicorn
 pymongo
 python-dotenv
-python-jose
+python-jose[cryptography]
 duckdb
 pandas
 requests
 python-multipart
 reportlab
+pydantic
+PyJWT
