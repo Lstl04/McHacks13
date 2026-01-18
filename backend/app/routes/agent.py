@@ -1,5 +1,6 @@
 import os
 from app.routes.invoices import create_invoice
+from app.routes.jobs import create_job
 import duckdb
 import pandas as pd
 import requests
@@ -8,7 +9,8 @@ from pydantic import BaseModel
 from app.api.dependencies import verify_token
 from app.database import get_database
 from bson import ObjectId
-from app.models import InvoiceCreate
+from app.models import InvoiceCreate, JobCreate
+from datetime import datetime
 import time
 import json
 import shutil
@@ -135,6 +137,50 @@ async def chat_with_gumloop_orchestrator(req: AgentRequest, token: dict = Depend
                                     userId=ObjectId(user_id_db))
         await create_invoice(invoice=new_invoice)
         return {"reply": "Invoice has been created successfully."}
+    elif target == "jobs":
+        # Extract job fields from Gumloop response
+        title = response.get("title")
+        
+        # Parse datetime strings if provided
+        
+        if response.get("startTime"):
+            try:
+                start_time_str = str(response.get("startTime"))
+                # Handle timezone if missing
+                if 'T' in start_time_str and '+' not in start_time_str and 'Z' not in start_time_str:
+                    start_time_str = start_time_str + '+00:00'
+                elif 'Z' in start_time_str:
+                    start_time_str = start_time_str.replace('Z', '+00:00')
+                start_time = datetime.fromisoformat(start_time_str)
+            except Exception as e:
+                print(f"Warning: Could not parse startTime: {e}")
+
+        # start_time = datetime.now()
+        
+        if response.get("endTime"):
+                end_time_str = str(response.get("endTime"))
+                # Handle timezone if missing
+                if 'T' in end_time_str and '+' not in end_time_str and 'Z' not in end_time_str:
+                    end_time_str = end_time_str + '+00:00'
+                elif 'Z' in end_time_str:
+                    end_time_str = end_time_str.replace('Z', '+00:00')
+                end_time = datetime.fromisoformat(end_time_str)
+
+        # end_time = datetime.now() + timedelta(hours=1)
+        
+        
+        # Create job object
+        new_job = JobCreate(
+            userId=user_id_db,
+            title=title,
+            status=response.get("status"),
+            location=response.get("location"),
+            startTime=start_time,
+            endTime=end_time,
+        )
+        
+        await create_job(job=new_job)
+        return {"reply": f"Job '{title}' has been created successfully."}
 
     # If it's for the user, just return the message directly
     print(response.get("message"))
