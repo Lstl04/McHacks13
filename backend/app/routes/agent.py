@@ -2,16 +2,18 @@ import os
 import duckdb
 import pandas as pd
 import requests
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from app.api.dependencies import verify_token
 from app.database import get_database
 from bson import ObjectId
 import time
 import json
+import shutil
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
+# This 'tricks' older libraries into finding what they ne
 
 def run_sql_analysis(user_id: str, sql_query: str):
     """
@@ -121,3 +123,62 @@ async def chat_with_gumloop_orchestrator(req: AgentRequest, token: dict = Depend
     # If it's for the user, just return the message directly
     print(response.get("message"))
     return {"reply": response.get("message")}
+
+
+def transcribe_audio(file_path: str):
+    """
+    Direct API call to ElevenLabs Scribe v2.
+    No SDK required = No Pydantic errors.
+    """
+    url = "https://api.elevenlabs.io/v1/speech-to-text"
+    api_key = os.getenv("ELEVENLABS_API_KEY")
+    
+    if not api_key:
+        print("Error: ELEVENLABS_API_KEY missing from .env")
+        return None
+
+    headers = {
+        "xi-api-key": api_key
+    }
+    
+    try:
+        with open(file_path, "rb") as audio_file:
+            files = {
+                "file": (os.path.basename(file_path), audio_file, "audio/wav")
+            }
+            # Scribe v2 is their most accurate model for business/finance
+            data = {
+                "model_id": "scribe_v2",
+                "language_code": "eng"
+            }
+            
+            response = requests.post(url, headers=headers, files=files, data=data)
+            
+        if response.status_code == 200:
+            # ElevenLabs returns a JSON with a 'text' field containing the transcript
+            return response.json().get("text")
+        else:
+            print(f"ElevenLabs API Error: {response.status_code} - {response.text}")
+            return None
+            
+    except Exception as e:
+        print(f"System Error during transcription: {str(e)}")
+        return None
+    
+@router.post("/chat/voice")
+async def process_voice_input(file: UploadFile = File(...)):
+    # 1. Save the blob temporarily
+    temp_path = f"temp_{file.filename}"
+    with open(temp_path, "wb") as buffer:
+        buffer.write(await file.read())
+    
+    # 2. Get transcription
+    transcript = transcribe_audio(temp_path)
+    
+    # 3. Cleanup file immediately
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+    
+    if not transcript:
+        return {"user_text": "", "error": "Transcription failed"}
+    return {"user_text": transcript}

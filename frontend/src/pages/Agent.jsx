@@ -1,28 +1,107 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
 import ReactMarkdown from 'react-markdown';
-import { Send, Bot, User, Sparkles } from 'lucide-react'; // Nice icons
+import { 
+  Send, 
+  Bot, 
+  User, 
+  Sparkles, 
+  Mic, 
+  Square, 
+  Loader2 
+} from 'lucide-react';
 import './Agent.css';
 
 const AgentChat = () => {
-  const { getAccessTokenSilently, user } = useAuth0();
+  const { getAccessTokenSilently } = useAuth0();
   const [messages, setMessages] = useState([
-  { 
-    role: 'assistant', 
-    content: `👋 **Welcome to your Business Command Center.** I'm your CFO AI Partner. I'm here to help you manage your finances, automate your workflows, and navigate the app. Here are a few things I can do for you:
+    { 
+      role: 'assistant', 
+      content: `👋 **Welcome to your Business Command Center.** I'm your CFO AI Partner. I'm here to help you manage your finances, automate your workflows, and navigate the app. 
 
-* **Financial Analysis**: Ask me things like *"Who was my highest-paying client last month?"* or *"Summarize my expenses by category."*
-* **Workflow Automation**: I can handle tasks like *"Remind John about his unpaid invoice"* or *"Add my job tomorrow at 9 AM to my calendar."*
-* **App Navigation**: If you're lost, just ask *"Where do I upload receipts?"*
+* **Financial Analysis**: Ask me things like *"Who was my highest-paying client last month?"*
+* **Workflow Automation**: I can handle tasks like *"Add my job tomorrow at 9 AM to my calendar."*
 
 How can I help you grow your business today?`
-  }
-]);
+    }
+  ]);
+  
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  
   const messagesEndRef = useRef(null);
+  const mediaRecorder = useRef(null);
+  const audioChunks = useRef([]);
 
-  // Auto-scroll to bottom
+  // --- Audio Recording Logic ---
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      audioChunks.current = [];
+
+      mediaRecorder.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.current.onstop = async () => {
+        const audioBlob = new Blob(audioChunks.current, { type: 'audio/wav' });
+        await handleVoiceTranscription(audioBlob);
+        
+        // Stop all tracks to turn off the red mic light in browser
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.current.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      alert("Please allow microphone access to use voice search.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder.current && isRecording) {
+      mediaRecorder.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleVoiceTranscription = async (blob) => {
+    setIsTranscribing(true);
+    const formData = new FormData();
+    formData.append('file', blob, 'recording.wav');
+
+    try {
+      const token = await getAccessTokenSilently();
+      const response = await fetch('http://127.0.0.1:8000/api/agent/chat/voice', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.user_text) {
+        setInput(data.user_text);
+        // Automatically trigger the send logic with the new text
+        await executeChat(data.user_text);
+      }
+    } catch (err) {
+      console.error("Transcription error:", err);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  // --- Chat Logic ---
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -31,38 +110,38 @@ How can I help you grow your business today?`
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const executeChat = async (messageText) => {
+    if (!messageText.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
+    const userMessage = { role: 'user', content: messageText };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
 
     try {
       const token = await getAccessTokenSilently();
-      
       const response = await fetch('http://127.0.0.1:8000/api/agent/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ message: userMessage.content })
+        body: JSON.stringify({ message: messageText })
       });
 
       const data = await response.json();
-      
-      // Add Bot Response
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }]);
-      
     } catch (error) {
       console.error("Chat Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I had trouble connecting to the server." }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I had trouble connecting." }]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSend = (e) => {
+    e.preventDefault();
+    executeChat(input);
   };
 
   return (
@@ -90,7 +169,6 @@ How can I help you grow your business today?`
           </div>
         ))}
         
-        {/* Loading Indicator */}
         {isLoading && (
           <div className="message-wrapper assistant">
             <div className="avatar"><Bot size={20} /></div>
@@ -106,15 +184,32 @@ How can I help you grow your business today?`
       <form className="input-area" onSubmit={handleSend}>
         <input 
           type="text" 
-          placeholder="Ask about your data..." 
+          placeholder={isTranscribing ? "Transcribing voice..." : "Ask about your data..."} 
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          disabled={isLoading}
+          disabled={isLoading || isTranscribing}
         />
-        <button type="submit" disabled={isLoading || !input.trim()}>
+        <button type="submit" disabled={isLoading || !input.trim() || isTranscribing}>
           <Send size={20} />
         </button>
       </form>
+
+      {/* Floating Speech Button */}
+      <button 
+        type="button"
+        className={`voice-fab ${isRecording ? 'recording' : ''} ${isTranscribing ? 'processing' : ''}`}
+        onClick={isRecording ? stopRecording : startRecording}
+        disabled={isLoading || isTranscribing}
+        title="Speech to Text"
+      >
+        {isTranscribing ? (
+          <Loader2 className="animate-spin" size={24} />
+        ) : isRecording ? (
+          <Square size={24} fill="white" />
+        ) : (
+          <Mic size={24} />
+        )}
+      </button>
     </div>
   );
 };
