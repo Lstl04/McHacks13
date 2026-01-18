@@ -1,0 +1,218 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500;700&family=Inter:wght@400;600;800&display=swap');
+
+.calendar-container {
+  padding: 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: #0f172a; /* AIly Deep Slate */
+  color: #f8fafc;
+  min-height: 100vh;
+  font-family: 'Inter', sans-serif;
+}
+
+/* --- Terminal Header --- */
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end; /* Grounded look */
+  margin-bottom: 40px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 24px;
+}
+
+.header-content h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -1px;
+}
+
+.header-content .subtitle {
+  margin: 4px 0 0 0;
+  color: #38bdf8; /* AIly Cyan */
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* --- HUD Controls --- */
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.create-event-btn {
+  background: #2563eb !important; /* AIly Blue */
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 800;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+.create-event-btn:hover {
+  background: #1d4ed8 !important;
+  transform: translateY(-2px);
+}
+
+.calendar-picker-btn {
+  background: #1e293b;
+  color: #f8fafc;
+  border: 1px solid #334155;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.calendar-picker-btn:hover {
+  background: #334155;
+}
+
+/* --- Diagnostic Modal (Create/SignIn) --- */
+.modal-overlay {
+  background-color: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.create-calendar-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 40px;
+  color: #f8fafc;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+}
+
+.create-calendar-modal h2 {
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.modal-btn.primary {
+  background: #2563eb;
+  color: white;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* --- The Main Grid Module --- */
+.calendar-content {
+  background: #1e293b; /* Module Card Color */
+  border-radius: 12px;
+  border: 1px solid #334155;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* --- FullCalendar Overrides (Industrial HUD) --- */
+.calendar-content .fc {
+  --fc-border-color: #334155;
+  --fc-button-bg-color: #334155;
+  --fc-button-border-color: #475569;
+  --fc-button-hover-bg-color: #475569;
+  --fc-today-bg-color: rgba(56, 189, 248, 0.05);
+}
+
+.calendar-content .fc-toolbar-title {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 22px !important;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+}
+
+.calendar-content .fc-col-header-cell {
+  background-color: #0f172a;
+  padding: 15px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.calendar-content .fc-daygrid-day-number {
+  color: #94a3b8;
+  font-family: 'Roboto Mono', monospace;
+  font-weight: 700;
+  padding: 10px;
+}
+
+.calendar-content .fc-daygrid-day.fc-day-today {
+  border: 1px solid #38bdf8 !important; /* Cyan glow for today */
+}
+
+.calendar-content .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+  background-color: #38bdf8;
+  color: #0f172a;
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  margin: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Event Styling */
+.calendar-content .fc-event {
+  background: #2563eb; /* Blue primary events */
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.calendar-content .fc-event:hover {
+  background: #3b82f6;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* --- Utility States --- */
+.calendar-loading-overlay {
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.spinner {
+  border-top-color: #38bdf8; /* Cyan loading */
+}
+
+.google-signin-btn-large {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 900;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+/* Error Banner */
+.calendar-error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .calendar-container { padding: 20px; }
+  .calendar-header h1 { font-size: 24px; }
+  .header-actions { flex-direction: column; width: 100%; }
+}

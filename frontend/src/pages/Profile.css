@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@500&family=Inter:wght@400;600;800&display=swap');
+
+.profile-container {
+  min-height: 100vh;
+  background: #0f172a !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Increase gap to top and bottom of screen */
+  padding: 40px 20px; 
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.profile-card {
+  background: #1e293b !important;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  /* Tight internal padding */
+  padding: 20px 28px; 
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 440px; /* Narrower footprint */
+}
+
+.profile-card h2 {
+  color: #ffffff !important;
+  text-align: center;
+  margin: 0 0 4px 0;
+  font-size: 20px; /* Smaller header */
+}
+
+.profile-subtitle {
+  color: #ffffff !important;
+  opacity: 0.6;
+  text-align: center;
+  margin-bottom: 15px;
+  font-size: 12px;
+}
+
+/* --- TIGHT FORM LAYOUT --- */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* Minimal gap between rows */
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px; /* Minimal label-to-input gap */
+}
+
+.form-group label {
+  font-size: 11px; /* Very compact labels */
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* --- COMPACT INPUTS --- */
+.form-group input,
+.form-group select {
+  padding: 6px 10px; /* Low profile inputs */
+  background: #0f172a !important;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #ffffff !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-group input::placeholder {
+  color: #ffffff !important;
+  opacity: 0.5 !important;
+}
+
+.submit-button {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border: none;
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.submit-button:hover {
+  background: #1d4ed8 !important;
+}
+
+/* --- LOADING/BANNER STATE --- */
+.loading-state p {
+  color: #ffffff !important;
+  font-size: 14px;
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ffffff !important;
+  padding: 6px 10px;
+  font-size: 11px;
+  margin-bottom: 10px;
+  border-radius: 4px;
+  border: 1px solid #ef4444;
+}
