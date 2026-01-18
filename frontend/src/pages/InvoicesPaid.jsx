@@ -5,6 +5,10 @@ import './Invoices.css';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
+// Debug: Log the API URL to help troubleshoot
+console.log('API_URL:', API_URL);
+console.log('VITE_API_URL env:', import.meta.env.VITE_API_URL);
+
 function InvoicesPaid() {
   const { user, getAccessTokenSilently } = useAuth0();
   const [invoices, setInvoices] = useState([]);
